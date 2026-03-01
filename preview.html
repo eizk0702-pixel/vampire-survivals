@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O R D E M // SOBREVIVÊNCIA</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Jura:wght@400;600;700&display=swap');
+
+        :root {
+            --bg: #030303;
+            --panel: rgba(10, 10, 12, 0.85);
+            --border: #333;
+            --text-main: #e0e0e0;
+            --text-muted: #666;
+            
+            /* Elementos */
+            --sangue: #b8002b;
+            --morte: #616161;
+            --energia: #7c3aed;
+            --conhecimento: #d4af37;
+            --medo: #ffffff;
+            
+            --ui-glow: 0 0 10px rgba(255,255,255,0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: 'Jura', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Efeito CRT Leve */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            z-index: 999;
+            background-size: 100% 3px;
+            pointer-events: none;
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            /* Suaviza os pixels para o estilo 2.5D */
+            image-rendering: pixelated; 
+        }
+
+        /* HUD & UI */
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-top {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            background: linear-gradient(rgba(0,0,0,0.8), transparent);
+        }
+
+        .nex-bar-container {
+            width: 100%; height: 15px; background: #111; border: 1px solid #333;
+            position: absolute; top: 0; left: 0; z-index: 1000;
+        }
+        .nex-bar { height: 100%; background: var(--conhecimento); width: 0%; transition: width 0.2s; box-shadow: 0 0 10px var(--conhecimento); }
+        .nex-text { position: absolute; top: 1px; left: 10px; font-size: 12px; font-family: 'Courier Prime'; color: #000; font-weight: bold; }
+
+        .status-box { margin-top: 15px; font-family: 'Courier Prime'; }
+        .hp-bar-bg { width: 200px; height: 10px; background: #222; margin-top: 5px; border: 1px solid #000; }
+        .hp-bar-fill { width: 100%; height: 100%; background: var(--sangue); transition: width 0.2s; }
+        
+        .timer { font-size: 2em; font-weight: bold; font-family: 'Courier Prime'; text-shadow: 2px 2px 0 #000; }
+
+        /* Boss HUD */
+        #bossHud {
+            position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+            width: 600px; text-align: center; display: none;
+        }
+        #bossName { font-size: 1.5em; color: var(--sangue); font-family: 'Courier Prime'; letter-spacing: 5px; text-shadow: 0 0 10px red; text-transform: uppercase;}
+        .boss-bar-bg { width: 100%; height: 20px; background: #111; border: 2px solid #333; margin-top: 5px; }
+        .boss-bar-fill { width: 100%; height: 100%; background: red; box-shadow: 0 0 15px red; transition: width 0.1s;}
+
+        /* Telas */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            z-index: 100; pointer-events: auto;
+        }
+        .hidden { display: none !important; }
+
+        .panel {
+            background: var(--panel); border: 1px solid var(--border); padding: 30px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.9); max-width: 600px; width: 90%; text-align: center;
+        }
+
+        h1 { font-family: 'Courier Prime'; font-size: 2.5em; color: var(--text-main); margin-bottom: 20px; }
+        button {
+            background: transparent; border: 1px solid var(--text-muted); color: var(--text-main);
+            padding: 15px 30px; font-family: 'Courier Prime'; font-size: 1.2em; cursor: pointer;
+            transition: all 0.2s; margin-top: 20px; width: 100%; text-transform: uppercase;
+        }
+        button:hover { background: var(--text-main); color: var(--bg); box-shadow: var(--ui-glow); }
+
+        /* Level Up Screen */
+        .cards-container { display: flex; gap: 20px; margin-top: 20px; justify-content: center; }
+        .upgrade-card {
+            background: #111; border: 1px solid #444; padding: 20px; width: 200px;
+            cursor: pointer; transition: 0.2s; text-align: center; display: flex; flex-direction: column;
+        }
+        .upgrade-card:hover { border-color: var(--conhecimento); box-shadow: 0 0 15px rgba(212, 175, 55, 0.3); transform: translateY(-5px); }
+        .card-icon { font-size: 3em; margin-bottom: 10px; }
+        .card-title { font-weight: bold; margin-bottom: 10px; font-size: 1.1em; color: var(--conhecimento); font-family: 'Courier Prime';}
+        .card-desc { font-size: 0.85em; color: #aaa; }
+
+        /* Active Weapons UI */
+        .inventory { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 5px; }
+        .inv-slot { width: 40px; height: 40px; background: rgba(0,0,0,0.6); border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 1.2em; }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="ui-layer">
+        <!-- Barra de XP (NEX) -->
+        <div class="nex-bar-container">
+            <div id="nexBar" class="nex-bar"></div>
+            <div id="nexText" class="nex-text">NEX: 5%</div>
+        </div>
+
+        <div class="hud-top">
+            <div class="status-box">
+                <div style="font-size:1.2em" id="playerName">AGENTE</div>
+                <div class="hp-bar-bg"><div id="hpBar" class="hp-bar-fill"></div></div>
+                <div style="font-size:0.8em; color:#aaa; margin-top:5px;" id="hpText">100/100 PV</div>
+            </div>
+            
+            <div class="timer" id="gameTimer">00:00</div>
+            
+            <div class="status-box" style="text-align: right;">
+                <div style="color:var(--text-muted)">ONDA <span id="waveDisplay" style="color:white; font-size:1.5em;">1</span></div>
+                <div style="color:var(--sangue); font-size:0.8em;" id="killsDisplay">0 ELIMINAÇÕES</div>
+            </div>
+        </div>
+
+        <!-- BOSS HUD -->
+        <div id="bossHud">
+            <div id="bossName">ZUMBI DE SANGUE COLOSSAL</div>
+            <div class="boss-bar-bg"><div id="bossHpBar" class="boss-bar-fill"></div></div>
+        </div>
+
+        <!-- INVENTÁRIO ATIVO -->
+        <div class="inventory" id="inventoryUI">
+            <!-- Preenchido via JS -->
+        </div>
+    </div>
+
+    <!-- TELA INICIAL -->
+    <div id="startScreen" class="screen">
+        <div class="panel">
+            <h1 style="color: var(--sangue); text-shadow: 2px 2px 0 red;">CRIS // SOBREVIVÊNCIA</h1>
+            <p style="color: #aaa; margin-bottom: 20px;">Sobreviva às ondas paranormais. Seu corpo ataca automaticamente. Mova-se para não morrer. Colete Orbes de Exposição para aumentar seu NEX.</p>
+            <button id="btnStart">INICIAR INCURSÃO</button>
+        </div>
+    </div>
+
+    <!-- TELA LEVEL UP -->
+    <div id="levelUpScreen" class="screen hidden">
+        <div class="panel" style="max-width: 800px; background: rgba(10,10,12,0.95); border-color: var(--conhecimento);">
+            <h1 style="color: var(--conhecimento); text-shadow: 0 0 10px var(--conhecimento);">NEX AUMENTOU</h1>
+            <p>Selecione um conhecimento paranormal para assimilar:</p>
+            <div class="cards-container" id="upgradeCards">
+                <!-- Cards injetados via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE MORTE -->
+    <div id="deathScreen" class="screen hidden">
+        <div class="panel" style="border-color: var(--sangue);">
+            <h1 style="color: var(--sangue); text-shadow: 0 0 20px red; font-size: 3em;">SINAL PERDIDO</h1>
+            <p id="deathStats" style="font-size: 1.2em; color: #ccc;">Sobreviveu por: 00:00 | NEX: 5%</p>
+            <button id="btnRestart">TENTAR NOVAMENTE</button>
+        </div>
+    </div>
+
+<script>
+/**
+ * ENGINE VAMPIRE SURVIVORS - ORDEM PARANORMAL (2.5D)
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+let width, height;
+
+function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    ctx.imageSmoothingEnabled = false; // Pixel art style
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ==========================================
+// CORE MATEMÁTICO E UTILITÁRIOS
+// ==========================================
+const M = {
+    dist: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
+    angle: (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1),
+    lerp: (a, b, t) => a + (b - a) * t,
+    rand: (min, max) => Math.random() * (max - min) + min,
+    randInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+};
+
+const COLORS = {
+    sangue: '#b8002b', morte: '#616161', energia: '#7c3aed', 
+    conhecimento: '#d4af37', medo: '#ffffff', exp: '#4da6ff'
+};
+
+// ==========================================
+// ESTADO DO JOGO
+// ==========================================
+const GAME = {
+    state: 'MENU', // MENU, PLAY, PAUSE_LEVELUP, DEAD
+    time: 0,
+    waveTime: 0,
+    wave: 1,
+    kills: 0,
+    camera: { x: 0, y: 0, shake: 0 },
+    keys: { w:false, a:false, s:false, d:false }
+};
+
+let entities = []; // Inimigos, XP, Particulas (ordenados por Y para 2.5D)
+let player;
+let activeWeapons = [];
+let floatingTexts = [];
+let bossActive = null;
+
+// ==========================================
+// BANCO DE DADOS DE HABILIDADES / RITUAIS
+// ==========================================
+const UPGRADES_DB = [
+    { id: 'pistola', name: 'Pistola Tática', icon: '🔫', desc: 'Dispara no inimigo mais próximo.', type: 'weapon', maxLevel: 5 },
+    { id: 'decadencia', name: 'Ritual: Decadência', icon: '💀', desc: 'Cria poças de Morte que dão dano contínuo.', type: 'weapon', maxLevel: 5 },
+    { id: 'eletrocussao', name: 'Ritual: Eletrocussão', icon: '⚡', desc: 'Dispara raios de Energia que perfuram inimigos.', type: 'weapon', maxLevel: 5 },
+    { id: 'laminasangue', name: 'Lâmina de Sangue', icon: '🗡️', desc: 'Ataque corpo-a-corpo giratório ao seu redor.', type: 'weapon', maxLevel: 5 },
+    { id: 'ruido', name: 'Tela de Ruído', icon: '🛡️', desc: 'Esferas de Energia orbitam e protegem você.', type: 'weapon', maxLevel: 5 },
+    { id: 'cicatrizacao', name: 'Cicatrização', icon: '❤️', desc: 'Regenera PV passivamente com o tempo.', type: 'passive', maxLevel: 5 },
+    { id: 'agilidade', name: 'Reflexos', icon: '👟', desc: 'Aumenta a velocidade de movimento.', type: 'passive', maxLevel: 5 },
+    { id: 'magnetismo', name: 'Magnetismo', icon: '🧲', desc: 'Aumenta a área de coleta de Exposição.', type: 'passive', maxLevel: 5 },
+];
+
+// ==========================================
+// CLASSES DO JOGO (2.5D)
+// ==========================================
+
+class FloatingText {
+    constructor(x, y, text, color, size = 14) {
+        this.x = x; this.y = y;
+        this.text = text; this.color = color;
+        this.size = size;
+        this.life = 1.0;
+        this.vy = -30;
+    }
+    update(dt) {
+        this.y += this.vy * dt;
+        this.life -= dt;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        ctx.font = `bold ${this.size}px monospace`;
+        ctx.fillText(this.text, this.x - ctx.measureText(this.text).width/2, this.y);
+        ctx.globalAlpha = 1;
+    }
+}
+
+class ExperienceGem {
+    constructor(x, y, value) {
+        this.x = x; this.y = y; this.z = 0; // z is height off ground
+        this.value = value;
+        this.type = 'xp';
+        this.color = value > 5 ? COLORS.energia : COLORS.exp;
+        this.size = value > 5 ? 5 : 3;
+        this.following = false;
+        this.bounce = M.rand(0, Math.PI);
+    }
+    update(dt) {
+        this.bounce += dt * 5;
+        this.z = Math.abs(Math.sin(this.bounce)) * 5;
+
+        let d = M.dist(this.x, this.y, player.x, player.y);
+        if(d < player.pickupRange) this.following = true;
+
+        if(this.following) {
+            let angle = M.angle(this.x, this.y, player.x, player.y);
+            let speed = 400 * dt;
+            this.x += Math.cos(angle) * speed;
+            this.y += Math.sin(angle) * speed;
+
+            if(d < 15) {
+                player.gainExp(this.value);
+                this.dead = true;
+            }
+        }
+    }
+    draw(ctx) {
+        // Sombra
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath(); ctx.ellipse(this.x, this.y, this.size, this.size/2, 0, 0, Math.PI*2); ctx.fill();
+        
+        // Gema (flutuando no eixo Z visual)
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y - this.z - 5, this.size, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+class Particle {
+    constructor(x, y, z, vx, vy, vz, color, life, size) {
+        this.x = x; this.y = y; this.z = z;
+        this.vx = vx; this.vy = vy; this.vz = vz;
+        this.color = color;
+        this.life = life; this.maxLife = life;
+        this.size = size;
+        this.type = 'particle';
+    }
+    update(dt) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.z += this.vz * dt;
+        this.vz -= 800 * dt; // Gravidade
+        
+        if(this.z < 0) {
+            this.z = 0;
+            this.vx *= 0.5; this.vy *= 0.5; this.vz = 0;
+        }
+        this.life -= dt;
+        if(this.life <= 0) this.dead = true;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x - this.size/2, this.y - this.z - this.size/2, this.size, this.size);
+        ctx.globalAlpha = 1;
+    }
+}
+
+class Projectile {
+    constructor(x, y, angle, speed, damage, color, pierce=1, size=4, lifetime=2) {
+        this.x = x; this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.damage = damage;
+        this.color = color;
+        this.pierce = pierce;
+        this.size = size;
+        this.life = lifetime;
+        this.type = 'projectile';
+        this.hitTargets = new Set();
+    }
+    update(dt) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.life -= dt;
+        if(this.life <= 0) this.dead = true;
+
+        // Rastro
+        if(Math.random() > 0.5) spawnParticle(this.x, this.y, 10, 0, 0, 0, this.color, 0.2, this.size);
+
+        // Colisão
+        for(let e of entities) {
+            if(e.type === 'enemy' && !this.hitTargets.has(e.id)) {
+                if(M.dist(this.x, this.y, e.x, e.y) < e.radius + this.size) {
+                    e.takeDamage(this.damage, this);
+                    this.hitTargets.add(e.id);
+                    this.pierce--;
+                    if(this.pierce <= 0) { this.dead = true; break; }
+                }
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y - 10, this.size, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+class DamageZone {
+    constructor(x, y, radius, damage, color, duration) {
+        this.x = x; this.y = y;
+        this.radius = radius; this.damage = damage;
+        this.color = color;
+        this.life = duration; this.maxLife = duration;
+        this.type = 'zone';
+        this.tickTimer = 0;
+    }
+    update(dt) {
+        this.life -= dt;
+        if(this.life <= 0) this.dead = true;
+
+        this.tickTimer += dt;
+        if(this.tickTimer >= 0.5) { // Dano a cada meio segundo
+            this.tickTimer = 0;
+            for(let e of entities) {
+                if(e.type === 'enemy' && M.dist(this.x, this.y, e.x, e.y) < this.radius) {
+                    e.takeDamage(this.damage, {x:this.x, y:this.y});
+                }
+            }
+        }
+    }
+    draw(ctx) {
+        let alpha = Math.min(1, this.life * 2) * 0.4;
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath(); ctx.ellipse(this.x, this.y, this.radius, this.radius*0.6, 0, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+        
+        // Efeito de ebulicao visual
+        if(Math.random() > 0.8) spawnParticle(this.x + M.rand(-this.radius,this.radius), this.y + M.rand(-this.radius*0.5,this.radius*0.5), 0, 0, -20, 50, this.color, 0.5, 3);
+    }
+}
+
+// ==========================================
+// ENTIDADES VIVAS (Player & Inimigos)
+// ==========================================
+class Character {
+    constructor(x, y) {
+        this.id = Math.random();
+        this.x = x; this.y = y;
+        this.vx = 0; this.vy = 0;
+        this.facing = 1; // 1 = right, -1 = left
+        this.walkCycle = 0;
+        this.knockback = {x:0, y:0};
+        this.dead = false;
+        this.flashTimer = 0;
+    }
+
+    applyKnockback(source, force) {
+        let angle = M.angle(source.x, source.y, this.x, this.y);
+        this.knockback.x = Math.cos(angle) * force;
+        this.knockback.y = Math.sin(angle) * force;
+    }
+
+    updatePhysics(dt) {
+        this.x += (this.vx + this.knockback.x) * dt;
+        this.y += (this.vy + this.knockback.y) * dt;
+        
+        this.knockback.x *= 0.9; // Atrito
+        this.knockback.y *= 0.9;
+
+        if(this.vx > 0) this.facing = 1;
+        else if(this.vx < 0) this.facing = -1;
+
+        if(Math.abs(this.vx) > 0 || Math.abs(this.vy) > 0) {
+            this.walkCycle += dt * 15;
+        } else {
+            this.walkCycle = 0;
+        }
+
+        if(this.flashTimer > 0) this.flashTimer -= dt;
+    }
+
+    drawShadow(ctx, radius) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath(); ctx.ellipse(this.x, this.y, radius, radius*0.5, 0, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class Player extends Character {
+    constructor(x, y) {
+        super(x, y);
+        this.type = 'player';
+        this.radius = 12;
+        
+        // Status VS
+        this.maxHp = 100; this.hp = this.maxHp;
+        this.speed = 150;
+        this.pickupRange = 60;
+        this.regen = 0;
+        
+        // Leveling
+        this.nex = 5; // Level base (5%)
+        this.exp = 0;
+        this.expNeeded = 10;
+        this.regenTimer = 0;
+    }
+
+    gainExp(amount) {
+        this.exp += amount;
+        if(this.exp >= this.expNeeded) {
+            this.exp -= this.expNeeded;
+            this.levelUp();
+        }
+        updateHUD();
+    }
+
+    levelUp() {
+        this.nex += 5; // +5% NEX por nível
+        this.expNeeded = Math.floor(this.expNeeded * 1.5);
+        GAME.state = 'PAUSE_LEVELUP';
+        generateLevelUpOptions();
+        GAME.camera.shake = 10;
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        this.flashTimer = 0.2;
+        GAME.camera.shake = 5;
+        updateHUD();
+        
+        // Sangue
+        for(let i=0; i<5; i++) spawnParticle(this.x, this.y, 15, M.rand(-50,50), M.rand(-50,50), M.rand(50,150), COLORS.sangue, 0.5, 4);
+
+        if(this.hp <= 0) {
+            this.dead = true;
+            gameOver();
+        }
+    }
+
+    update(dt) {
+        // Input
+        let dx = 0, dy = 0;
+        if(GAME.keys.w) dy -= 1;
+        if(GAME.keys.s) dy += 1;
+        if(GAME.keys.a) dx -= 1;
+        if(GAME.keys.d) dx += 1;
+
+        if(dx !== 0 || dy !== 0) {
+            let len = Math.hypot(dx, dy);
+            dx /= len; dy /= len;
+        }
+
+        this.vx = dx * this.speed;
+        this.vy = dy * this.speed;
+
+        this.updatePhysics(dt);
+
+        // Regen Passivo
+        if(this.regen > 0) {
+            this.regenTimer += dt;
+            if(this.regenTimer >= 1) {
+                this.regenTimer = 0;
+                this.hp = Math.min(this.maxHp, this.hp + this.regen);
+                updateHUD();
+            }
+        }
+    }
+
+    draw(ctx) {
+        this.drawShadow(ctx, 12);
+        
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.facing, 1); // Flip horizontal para 2.5D
+
+        let sway = Math.sin(this.walkCycle) * 2;
+        let bounce = Math.abs(Math.cos(this.walkCycle)) * 3;
+
+        if(this.flashTimer > 0) ctx.filter = 'brightness(200%) sepia(100%) hue-rotate(-50deg) saturate(500%)';
+
+        // Corpo (Sobretudo Estiloso)
+        ctx.fillStyle = '#2c3539';
+        ctx.beginPath();
+        ctx.roundRect(-8, -25 - bounce, 16, 25, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#111'; ctx.lineWidth=1; ctx.stroke();
+
+        // Gravata/Detalhe
+        ctx.fillStyle = COLORS.sangue;
+        ctx.fillRect(2, -22 - bounce, 2, 8);
+
+        // Braços
+        ctx.fillStyle = '#2c3539';
+        // Braço traseiro
+        ctx.beginPath(); ctx.roundRect(-4 - sway, -20 - bounce, 6, 15, 3); ctx.fill();
+        // Braço frontal
+        ctx.beginPath(); ctx.roundRect(0 + sway, -20 - bounce, 6, 15, 3); ctx.fill();
+
+        // Cabeça
+        ctx.fillStyle = '#ffccaa'; // Pele
+        ctx.beginPath(); ctx.arc(0, -32 - bounce, 8, 0, Math.PI*2); ctx.fill();
+        
+        // Cabelo
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(0, -33 - bounce, 8.5, Math.PI, Math.PI*2.5); ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+class Enemy extends Character {
+    constructor(x, y, variant) {
+        super(x, y);
+        this.type = 'enemy';
+        this.variant = variant; // 'zumbi', 'lodo', 'boss_sangue'
+        
+        // Escalando dificuldade baseada na onda
+        let waveMult = 1 + (GAME.wave * 0.2);
+
+        if(variant === 'zumbi') {
+            this.maxHp = 20 * waveMult;
+            this.speed = M.rand(40, 70);
+            this.radius = 12;
+            this.color = COLORS.sangue;
+            this.damage = 5;
+            this.xpValue = 1;
+        } else if (variant === 'lodo') {
+            this.maxHp = 60 * waveMult;
+            this.speed = M.rand(20, 35);
+            this.radius = 18;
+            this.color = COLORS.morte;
+            this.damage = 10;
+            this.xpValue = 3;
+        } else if (variant === 'anarquico') {
+            this.maxHp = 15 * waveMult;
+            this.speed = 100;
+            this.radius = 10;
+            this.color = COLORS.energia;
+            this.damage = 8;
+            this.xpValue = 2;
+        } else if (variant === 'boss_sangue') {
+            this.maxHp = 2000 * waveMult;
+            this.speed = 45;
+            this.radius = 35;
+            this.color = '#800000';
+            this.damage = 25;
+            this.xpValue = 100;
+            this.isBoss = true;
+            this.name = "ZUMBI DE SANGUE COLOSSAL";
+        }
+
+        this.hp = this.maxHp;
+        this.attackTimer = 0;
+    }
+
+    takeDamage(amount, source) {
+        this.hp -= amount;
+        this.flashTimer = 0.1;
+        this.applyKnockback(source, amount * 2);
+        
+        // Particulas de hit (Sangue do inimigo)
+        let c = this.variant === 'lodo' ? '#000' : this.color;
+        for(let i=0; i<3; i++) spawnParticle(this.x, this.y, 15, M.rand(-50,50), M.rand(-50,50), M.rand(50,150), c, 0.4, 3);
+        
+        floatingTexts.push(new FloatingText(this.x + M.rand(-10,10), this.y - 30, Math.ceil(amount), '#fff', this.isBoss? 20:12));
+
+        if(this.isBoss) updateBossHUD();
+
+        if(this.hp <= 0 && !this.dead) {
+            this.dead = true;
+            GAME.kills++;
+            document.getElementById('killsDisplay').innerText = `${GAME.kills} ELIMINAÇÕES`;
+            entities.push(new ExperienceGem(this.x, this.y, this.xpValue));
+            
+            if(this.isBoss) {
+                bossActive = null;
+                document.getElementById('bossHud').style.display = 'none';
+                entities.push(new ExperienceGem(this.x+20, this.y, 50));
+                entities.push(new ExperienceGem(this.x-20, this.y, 50));
+            }
+        }
+    }
+
+    update(dt) {
+        if(this.attackTimer > 0) this.attackTimer -= dt;
+
+        let d = M.dist(this.x, this.y, player.x, player.y);
+        
+        if(d > this.radius + player.radius) {
+            let angle = M.angle(this.x, this.y, player.x, player.y);
+            this.vx = Math.cos(angle) * this.speed;
+            this.vy = Math.sin(angle) * this.speed;
+        } else {
+            this.vx = 0; this.vy = 0;
+            if(this.attackTimer <= 0) {
+                player.takeDamage(this.damage);
+                this.attackTimer = 1.0;
+            }
+        }
+
+        this.updatePhysics(dt);
+    }
+
+    draw(ctx) {
+        this.drawShadow(ctx, this.radius);
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.facing, 1);
+
+        let sway = Math.sin(this.walkCycle) * 2;
+        let bounce = Math.abs(Math.cos(this.walkCycle)) * 3;
+
+        if(this.flashTimer > 0) ctx.filter = 'brightness(200%)';
+
+        if(this.variant === 'zumbi' || this.isBoss) {
+            let scale = this.isBoss ? 2.5 : 1;
+            ctx.scale(scale, scale);
+            // Corpo
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.roundRect(-6, -20 - bounce, 12, 20, 3); ctx.fill();
+            // Braço zumbi (para frente)
+            ctx.beginPath(); ctx.roundRect(2, -18 - bounce, 10, 4, 2); ctx.fill();
+            // Cabeça
+            ctx.fillStyle = '#a30000';
+            ctx.beginPath(); ctx.arc(0, -25 - bounce, 7, 0, Math.PI*2); ctx.fill();
+            // Olho brilhante
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(3, -27 - bounce, 1.5, 0, Math.PI*2); ctx.fill();
+        } 
+        else if(this.variant === 'lodo') {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            // Corpo bolha
+            ctx.ellipse(0, -10 - bounce/2, 18 + sway, 15 - sway, 0, 0, Math.PI*2);
+            ctx.fill();
+            // Caveira interna
+            ctx.fillStyle = '#888';
+            ctx.beginPath(); ctx.arc(5, -12 - bounce/2, 5, 0, Math.PI*2); ctx.fill();
+        }
+        else if(this.variant === 'anarquico') {
+            ctx.fillStyle = (Math.random() > 0.5) ? '#fff' : this.color;
+            ctx.fillRect(-8, -20 - bounce, 16, 16);
+        }
+
+        ctx.restore();
+    }
+}
+
+// ==========================================
+// ARMAS E RITUAIS (SISTEMA DE ATAQUE AUTOMÁTICO)
+// ==========================================
+class WeaponSystem {
+    constructor(id, level=1) {
+        this.id = id;
+        this.level = level;
+        this.cooldown = 0;
+        
+        let data = UPGRADES_DB.find(u => u.id === id);
+        this.name = data.name;
+        this.icon = data.icon;
+    }
+
+    upgrade() { this.level++; }
+
+    update(dt) {
+        this.cooldown -= dt;
+        if(this.cooldown <= 0) {
+            this.fire();
+        }
+    }
+
+    fire() {
+        // Encontra alvo mais proximo (padrão)
+        let target = null;
+        let minDist = Infinity;
+        for(let e of entities) {
+            if(e.type === 'enemy') {
+                let d = M.dist(player.x, player.y, e.x, e.y);
+                if(d < minDist) { minDist = d; target = e; }
+            }
+        }
+
+        if(this.id === 'pistola' && target && minDist < 300) {
+            this.cooldown = Math.max(0.2, 1.0 - (this.level * 0.15));
+            let dmg = 15 + (this.level * 5);
+            let projCount = this.level >= 3 ? 2 : 1;
+            
+            for(let i=0; i<projCount; i++) {
+                let angle = M.angle(player.x, player.y, target.x, target.y) + (i*0.2 - (projCount-1)*0.1);
+                entities.push(new Projectile(player.x, player.y, angle, 400, dmg, '#ffd700', 1, 3));
+            }
+            // Som/Recuo visual
+            GAME.camera.shake = 2;
+        }
+        else if(this.id === 'decadencia') {
+            this.cooldown = 2.5 - (this.level * 0.2);
+            let dmg = 5 + (this.level * 3);
+            let radius = 40 + (this.level * 10);
+            
+            // Spawn under random enemy or random position
+            let eTarget = target;
+            if(eTarget) {
+                entities.push(new DamageZone(eTarget.x, eTarget.y, radius, dmg, COLORS.morte, 3.0));
+                spawnParticle(eTarget.x, eTarget.y, 0, 0,0,0, COLORS.morte, 0.5, 40); // Flash
+            }
+        }
+        else if(this.id === 'eletrocussao' && target && minDist < 250) {
+            this.cooldown = 1.5 - (this.level * 0.1);
+            let dmg = 10 + (this.level * 4);
+            let pierce = 2 + this.level; // Bounces
+            
+            let angle = M.angle(player.x, player.y, target.x, target.y);
+            entities.push(new Projectile(player.x, player.y, angle, 250, dmg, COLORS.energia, pierce, 6));
+        }
+        else if(this.id === 'laminasangue') {
+            this.cooldown = 1.2 - (this.level * 0.1);
+            let dmg = 25 + (this.level * 8);
+            let radius = 60 + (this.level * 5);
+            
+            // Efeito visual Slash
+            for(let i=0; i<Math.PI*2; i+=0.2) {
+                spawnParticle(player.x + Math.cos(i)*radius, player.y + Math.sin(i)*radius, 10, 0,0,0, COLORS.sangue, 0.2, 5);
+            }
+            
+            for(let e of entities) {
+                if(e.type === 'enemy' && M.dist(player.x, player.y, e.x, e.y) < radius) {
+                    e.takeDamage(dmg, player);
+                }
+            }
+        }
+    }
+}
+
+// Escudos orbitais
+class OrbitShield {
+    constructor(level) {
+        this.level = level;
+        this.angle = 0;
+        this.type = 'orbital';
+    }
+    update(dt) {
+        this.angle += dt * 3;
+        let count = 1 + this.level;
+        let dmg = 10 + (this.level * 5);
+        let radius = 50;
+        
+        for(let i=0; i<count; i++) {
+            let a = this.angle + (i * (Math.PI*2/count));
+            let px = player.x + Math.cos(a)*radius;
+            let py = player.y + Math.sin(a)*radius;
+            
+            // Draw
+            ctx.fillStyle = COLORS.energia;
+            ctx.beginPath(); ctx.arc(px, py - 10, 5, 0, Math.PI*2); ctx.fill();
+            
+            // Dano por toque
+            for(let e of entities) {
+                if(e.type === 'enemy' && M.dist(px, py, e.x, e.y) < 15 + e.radius) {
+                    // Previne hit constante
+                    if(!e.lastOrbitHit || GAME.time - e.lastOrbitHit > 0.5) {
+                        e.takeDamage(dmg, {x:px, y:py});
+                        e.lastOrbitHit = GAME.time;
+                    }
+                }
+            }
+        }
+    }
+}
+
+let orbitShieldRef = null;
+
+function addUpgrade(id) {
+    let type = UPGRADES_DB.find(u => u.id === id).type;
+    
+    if(type === 'weapon') {
+        let existing = activeWeapons.find(w => w.id === id);
+        if(existing) {
+            existing.upgrade();
+        } else {
+            if(id === 'ruido') {
+                orbitShieldRef = new OrbitShield(1);
+            } else {
+                activeWeapons.push(new WeaponSystem(id, 1));
+            }
+        }
+    } else {
+        // Passivas
+        if(id === 'cicatrizacao') player.regen += 1;
+        if(id === 'agilidade') player.speed += 15;
+        if(id === 'magnetismo') player.pickupRange += 30;
+    }
+    
+    updateInventoryUI();
+}
+
+function updateInventoryUI() {
+    const inv = document.getElementById('inventoryUI');
+    inv.innerHTML = '';
+    
+    // Mostra armas ativas
+    activeWeapons.forEach(w => {
+        inv.innerHTML += `<div class="inv-slot" title="${w.name} Lvl ${w.level}">${w.icon}<span style="position:absolute; bottom:0; right:2px; font-size:10px;">${w.level}</span></div>`;
+    });
+    if(orbitShieldRef) {
+        inv.innerHTML += `<div class="inv-slot" title="Tela de Ruído Lvl ${orbitShieldRef.level}">🛡️<span style="position:absolute; bottom:0; right:2px; font-size:10px;">${orbitShieldRef.level}</span></div>`;
+    }
+}
+
+// ==========================================
+// CORE SYSTEM (Spawns, Loop, Render)
+// ==========================================
+
+function spawnParticle(x, y, z, vx, vy, vz, color, life, size) {
+    entities.push(new Particle(x, y, z, vx, vy, vz, color, life, size));
+}
+
+function getSpawnPos() {
+    let angle = Math.random() * Math.PI * 2;
+    let dist = width/2 + 100; // Fora da tela
+    return {
+        x: player.x + Math.cos(angle) * dist,
+        y: player.y + Math.sin(angle) * dist
+    };
+}
+
+function spawnWave() {
+    // 1 minuto = 1 onda na logica original VS, mas faremos a cada 30s para dinamismo
+    if(GAME.wave % 10 === 0 && !bossActive) {
+        // BOSS WAVE!
+        let pos = getSpawnPos();
+        bossActive = new Enemy(pos.x, pos.y, 'boss_sangue');
+        entities.push(bossActive);
+        
+        document.getElementById('bossHud').style.display = 'block';
+        updateBossHUD();
+        
+        // Limpa a tela de lixo menor para focar no boss
+        entities = entities.filter(e => e.type !== 'enemy' || e.isBoss);
+    } else {
+        // Inimigos normais
+        let count = 5 + (GAME.wave * 2);
+        for(let i=0; i<count; i++) {
+            let pos = getSpawnPos();
+            let type = 'zumbi';
+            if(GAME.wave > 3 && Math.random() > 0.7) type = 'anarquico';
+            if(GAME.wave > 5 && Math.random() > 0.8) type = 'lodo';
+            
+            // Cap the total number of enemies to maintain performance
+            let enemyCount = entities.filter(e => e.type === 'enemy').length;
+            if(enemyCount < 200) {
+                entities.push(new Enemy(pos.x, pos.y, type));
+            }
+        }
+    }
+}
+
+function updateBossHUD() {
+    if(!bossActive) return;
+    let pct = (bossActive.hp / bossActive.maxHp) * 100;
+    document.getElementById('bossHpBar').style.width = `${Math.max(0, pct)}%`;
+}
+
+function updateHUD() {
+    document.getElementById('hpBar').style.width = `${(player.hp / player.maxHp) * 100}%`;
+    document.getElementById('hpText').innerText = `${Math.ceil(player.hp)}/${player.maxHp} PV`;
+    
+    let expPct = (player.exp / player.expNeeded) * 100;
+    document.getElementById('nexBar').style.width = `${expPct}%`;
+    document.getElementById('nexText').innerText = `NEX: ${player.nex}%`;
+}
+
+// SISTEMA DE LEVEL UP
+function generateLevelUpOptions() {
+    const container = document.getElementById('upgradeCards');
+    container.innerHTML = '';
+    document.getElementById('levelUpScreen').classList.remove('hidden');
+
+    // Pega 3 aleatorios
+    let shuffled = [...UPGRADES_DB].sort(() => 0.5 - Math.random());
+    let choices = shuffled.slice(0, 3);
+
+    choices.forEach(c => {
+        let card = document.createElement('div');
+        card.className = 'upgrade-card';
+        
+        // Checa lvl atual
+        let currLevel = 0;
+        if(c.type === 'weapon') {
+            let w = activeWeapons.find(aw => aw.id === c.id);
+            if(w) currLevel = w.level;
+            if(c.id === 'ruido' && orbitShieldRef) currLevel = orbitShieldRef.level;
+        }
+        
+        let titleText = currLevel > 0 ? `${c.name} (Lvl ${currLevel+1})` : `Novo: ${c.name}`;
+
+        card.innerHTML = `
+            <div class="card-icon">${c.icon}</div>
+            <div class="card-title">${titleText}</div>
+            <div class="card-desc">${c.desc}</div>
+        `;
+        
+        card.onclick = () => {
+            addUpgrade(c.id);
+            document.getElementById('levelUpScreen').classList.add('hidden');
+            GAME.state = 'PLAY';
+        };
+        container.appendChild(card);
+    });
+}
+
+// LOOP PRINCIPAL
+let lastTime = 0;
+
+function loop(timestamp) {
+    let dt = (timestamp - lastTime) / 1000;
+    if(dt > 0.1) dt = 0.1;
+    lastTime = timestamp;
+
+    if(GAME.state === 'PLAY') {
+        GAME.time += dt;
+        GAME.waveTime += dt;
+
+        // Controle de Onda (A cada 10 segundos spawn nova leva, a cada 30 segundos sobe onda)
+        if(GAME.waveTime >= 30) {
+            GAME.waveTime = 0;
+            GAME.wave++;
+            document.getElementById('waveDisplay').innerText = GAME.wave;
+        }
+        
+        // Timer display (MM:SS)
+        let mins = Math.floor(GAME.time / 60);
+        let secs = Math.floor(GAME.time % 60);
+        document.getElementById('gameTimer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        // Spawner contínuo
+        if(Math.random() < 0.05 + (GAME.wave * 0.01)) spawnWave();
+
+        // Update Player
+        player.update(dt);
+        
+        // Camera Follow w/ Shake
+        let targetCamX = player.x - width/2;
+        let targetCamY = player.y - height/2;
+        GAME.camera.x = M.lerp(GAME.camera.x, targetCamX, 0.1);
+        GAME.camera.y = M.lerp(GAME.camera.y, targetCamY, 0.1);
+        
+        if(GAME.camera.shake > 0) {
+            GAME.camera.x += M.rand(-GAME.camera.shake, GAME.camera.shake);
+            GAME.camera.y += M.rand(-GAME.camera.shake, GAME.camera.shake);
+            GAME.camera.shake *= 0.9;
+            if(GAME.camera.shake < 0.5) GAME.camera.shake = 0;
+        }
+
+        // Update Weapons
+        activeWeapons.forEach(w => w.update(dt));
+
+        // Update Entities & Clean Dead
+        for(let i = entities.length - 1; i >= 0; i--) {
+            let e = entities[i];
+            if(e.update) e.update(dt);
+            if(e.dead) entities.splice(i, 1);
+        }
+
+        // Update Floating Texts
+        for(let i = floatingTexts.length - 1; i >= 0; i--) {
+            floatingTexts[i].update(dt);
+            if(floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+        }
+    }
+
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// DESENHO (RENDER 2.5D)
+function drawGrid(ctx) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+    ctx.lineWidth = 1;
+    let gridSize = 100;
+    let ox = -(GAME.camera.x % gridSize);
+    let oy = -(GAME.camera.y % gridSize);
+    
+    ctx.beginPath();
+    for(let x = ox; x < width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+    for(let y = oy; y < height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+    ctx.stroke();
+}
+
+function draw() {
+    // Background Dark
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, width, height);
+
+    if(GAME.state === 'MENU') return;
+
+    ctx.save();
+    ctx.translate(-GAME.camera.x, -GAME.camera.y);
+
+    drawGrid(ctx);
+
+    // Z-Sorting para visual 2.5D perfeito (desenha os de cima/traz primeiro)
+    entities.sort((a, b) => a.y - b.y);
+
+    // Draw Entities
+    entities.forEach(e => {
+        if(e.draw) e.draw(ctx);
+    });
+    
+    // Draw Player (inserido na ordem correta, mas simplificando chamaremos manual e garantiremos que entidades abaixo dele cubram)
+    // Para z-sort perfeito com player, ele devia estar no array. Vamos desenhar ele separadamente, e os que tiverem Y menor que o player primeiro.
+    let drawnPlayer = false;
+    entities.forEach(e => {
+        if(!drawnPlayer && e.y > player.y) {
+            player.draw(ctx);
+            if(orbitShieldRef) orbitShieldRef.update(0); // Desenha escudos na camada do player
+            drawnPlayer = true;
+        }
+        if(e.type !== 'orbital') if(e.draw) e.draw(ctx);
+    });
+    if(!drawnPlayer) {
+        player.draw(ctx);
+        if(orbitShieldRef) orbitShieldRef.update(0);
+    }
+
+    // Draw Texts on top
+    floatingTexts.forEach(ft => ft.draw(ctx));
+
+    ctx.restore();
+    
+    // Vignette Escuro nas bordas
+    let grd = ctx.createRadialGradient(width/2, height/2, height*0.4, width/2, height/2, height);
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.8)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, width, height);
+
+    // Efeito de Dano Visão
+    if(player && player.hp < player.maxHp * 0.3) {
+        ctx.fillStyle = `rgba(184, 0, 43, ${Math.abs(Math.sin(GAME.time*4))*0.15})`;
+        ctx.fillRect(0, 0, width, height);
+    }
+}
+
+// ==========================================
+// CONTROLES & FLUXO
+// ==========================================
+window.addEventListener('keydown', e => {
+    let k = e.key.toLowerCase();
+    if(GAME.keys.hasOwnProperty(k)) GAME.keys[k] = true;
+});
+window.addEventListener('keyup', e => {
+    let k = e.key.toLowerCase();
+    if(GAME.keys.hasOwnProperty(k)) GAME.keys[k] = false;
+});
+
+function initGame() {
+    player = new Player(0, 0);
+    entities = [];
+    activeWeapons = [];
+    floatingTexts = [];
+    orbitShieldRef = null;
+    bossActive = null;
+    
+    GAME.time = 0; GAME.waveTime = 0; GAME.wave = 1; GAME.kills = 0;
+    
+    // Arma inicial garantida
+    addUpgrade('pistola');
+    
+    document.getElementById('bossHud').style.display = 'none';
+    updateHUD();
+    document.getElementById('killsDisplay').innerText = `0 ELIMINAÇÕES`;
+    document.getElementById('waveDisplay').innerText = `1`;
+    
+    GAME.state = 'PLAY';
+}
+
+function gameOver() {
+    GAME.state = 'DEAD';
+    document.getElementById('deathScreen').classList.remove('hidden');
+    let mins = Math.floor(GAME.time / 60);
+    let secs = Math.floor(GAME.time % 60);
+    document.getElementById('deathStats').innerText = `Sobreviveu por: ${mins}:${secs.toString().padStart(2,'0')} | NEX Alcançado: ${player.nex}%`;
+}
+
+// BOTOES UI
+document.getElementById('btnStart').addEventListener('click', () => {
+    document.getElementById('startScreen').classList.add('hidden');
+    initGame();
+});
+
+document.getElementById('btnRestart').addEventListener('click', () => {
+    document.getElementById('deathScreen').classList.add('hidden');
+    initGame();
+});
+
+// START
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
